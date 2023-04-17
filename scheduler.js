@@ -3,60 +3,55 @@
  * @param {string} courses[].name - The name of the course.
  * @param {string} courses[].prerequisites - Courses needed to be taken before eligible to attend current.
  */
-var printSchedule = function(courses) {
-    const visited = Array(courses.length).fill(0);
+const printSchedule = function (courses) {
     const graph = new Map();
+    const indegrees = new Map();
     const order = [];
+
+    // Initialize the graph and indegrees for performing a topological sort on the courses.
+    // O(n) : n = number of courses
+    for (const course of courses) {
+        graph.set(course.name, []);
+        indegrees.set(course.name, 0);
+    }
+
+    // For each requirement a course has, it looks up that course in a list and adds the name of
+    // the current course to that list. It also looks up the current course in a counter and adds
+    // 1 to the count of courses that require it as a prerequisite.
+    //  O(n * m) : n = number of courses, m = max number of prerequisites for a single course
+    for (const course of courses) {
+        for (const prereq of course.prerequisites) {
+            graph.get(prereq).push(course.name);
+            indegrees.set(course.name, indegrees.get(course.name) + 1);
+        }
+    }
+
+    // Find courses with no prerequisites to the beginning of the queue
+    // O(n) : number of courses in the indegrees map
     const queue = [];
+    for (const [course, indegree] of indegrees) {
+        if (indegree === 0) queue.push(course);
+    }
 
-    // Build graph with prerequisites for courses
-    // O(n * m) : n = number of courses, m = number of prerequisites
-    for (const [index, course] of courses.entries()) {
-        visited[index] = course.prerequisites.length;
-        for (let j = 0; j < course.prerequisites.length; j++) {
-            let prereq = course.prerequisites[j];
-            if (graph.has(prereq)) {
-                graph.get(prereq).push(index);
-            } else {
-                graph.set(prereq, [index]);
-            }
+    // BFS starting with courses with no prerequisites
+    // O(n + e) : n = number of courses, e = total number of prerequisite dependencies between courses
+    while (queue.length > 0) {
+        const course = queue.shift();
+        order.push(course);
+        for (const neighbor of graph.get(course)) {
+            indegrees.set(neighbor, indegrees.get(neighbor) - 1);
+            if (indegrees.get(neighbor) === 0) queue.push(neighbor);
         }
     }
-
-    // Add courses without prerequisites to beginning of queue
-    // O(n) : number of courses
-    for (let i = 0; i < visited.length; i++) {
-        if (visited[i] == 0) queue.push(i);
-    }
-
-    // Sort courses based on prerequisites
-    // O(n) : number of courses
-    while (queue.length) {
-        let index = queue.shift();
-        let courseName = courses[index].name;
-        // if course is a prerequisite
-        if (graph.has(courseName)) {
-            // get all courses where current is a prerequisite
-            for (let prereqToThisCourseIndex of graph.get(courseName)) {
-                visited[prereqToThisCourseIndex]--;
-                // prerequisites have been met
-                if (visited[prereqToThisCourseIndex] === 0) {
-                    queue.push(prereqToThisCourseIndex);
-                }
-            }
-        }
-        order.push(index);
-    }
-
 
     // Print course names in prerequisite-satisfying order
     // O(n) : number of courses
-    for (let i = 0; i < order.length; i++) {
-        console.log(courses[order[i]].name);
+    for (const course of order) {
+        console.log(course);
     }
 }
 
-var start = function() {
+const start = function () {
     if (process.argv.length <= 2) {
         console.log("Error: No argument provided.");
     } else {
